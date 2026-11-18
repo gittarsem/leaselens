@@ -1,0 +1,10 @@
+fastmcp==2.12.4
+google-genai==1.38.0
+psycopg[binary]==3.2.10
+pgvector==0.4.1
+sentence-transformers==5.1.1
+flashrank==0.2.10
+pypdf==6.1.1
+pydantic==2.11.9
+python-dotenv==1.1.1
+streamlit==1.50.0

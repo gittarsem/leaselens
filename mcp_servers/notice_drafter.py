@@ -1,7 +1,7 @@
 """Validated dispute assessment and formal notice drafting."""
 import json
+import logging
 import os
-import time
 from decimal import Decimal
 
 from dotenv import load_dotenv
@@ -12,7 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 load_dotenv()
 mcp = FastMCP("LeaseLens dispute package and notice")
-GEMINI_MODELS = ["gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
+GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash"]
+logger = logging.getLogger(__name__)
 
 
 class DisputeRiskAssessment(BaseModel):
@@ -38,15 +39,21 @@ def _json_object(value: str) -> dict:
 def _fallback_assessment(audit: dict, conflicts: dict) -> DisputeRiskAssessment:
     unverified = Decimal(str(audit.get("unverified_deductions_without_receipts_inr", 0)))
     excess = Decimal(str(audit.get("deposit_above_illustrative_cap_inr", 0)))
-    score = 78 if unverified > 0 and excess > 0 else 68 if unverified > 0 else 52 if excess > 0 else 30
-    risk_level = "high" if score >= 70 else "moderate" if score >= 40 else "low"
     lease_items = conflicts.get("lease_citations", [])
     statute_items = conflicts.get("statute_citations", [])
     lease_clauses = []
     for item in lease_items:
         text = str(item.get("content", "")).lower()
-        if any(term in text for term in ("wear and tear", "without invoices", "ordinary use", "without court", "repainting")):
+        if any(term in text for term in ("wear and tear", "without invoices", "without bills", "no bills", "no receipt", "ordinary use", "without court", "painting", "repainting")):
             lease_clauses.append(f"Clause {item.get('citation', 'unidentified')}: potential conflict requiring review under applicable state law.")
+    has_unverified_claim = unverified > 0
+    has_excess_deposit = excess > 0
+    has_potential_clause_conflict = bool(lease_clauses)
+    score = (78 if has_unverified_claim and has_excess_deposit
+             else 78 if has_excess_deposit and has_potential_clause_conflict
+             else 68 if has_unverified_claim or has_potential_clause_conflict
+             else 52 if has_excess_deposit else 30)
+    risk_level = "high" if score >= 70 else "moderate" if score >= 40 else "low"
     statutes = [
         f"{item.get('citation', 'Unidentified provision')} (potentially relevant reference; applicability and violation require local legal review)."
         for item in statute_items
@@ -126,24 +133,18 @@ Deterministic ledger audit: {ledger_audit}
 Set violated_statutes to citations present in retrieved conflicts only. lawfully refundable amount should equal ledger_audit lawful_refundable_balance_inr if parseable."""
         try:
             for model_name in GEMINI_MODELS:
-                attempts = 3 if model_name == GEMINI_MODELS[0] else 1
-                for attempt in range(attempts):
-                    try:
-                        response = client.models.generate_content(model=model_name, contents=prompt,
-                            config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=DisputeRiskAssessment))
-                        assessment = DisputeRiskAssessment.model_validate_json(response.text)
-                        model_used = model_name
-                        break
-                    except errors.APIError as exc:
-                        status = getattr(exc, "status_code", getattr(exc, "code", None))
-                        if status in (429, 503) and attempt + 1 < attempts:
-                            time.sleep(2 ** attempt)
-                            continue
-                        if status in (400, 404, 429, 503):
-                            fallback_reason = f"{model_name} returned HTTP {status}"
-                            break
-                        fallback_reason = f"{model_name} API error: {exc}"
-                        break
+                try:
+                    response = client.models.generate_content(model=model_name, contents=prompt,
+                        config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=DisputeRiskAssessment))
+                    assessment = DisputeRiskAssessment.model_validate_json(response.text)
+                    model_used = model_name
+                    logger.info("Notice assessment generated with %s", model_name)
+                except (errors.ServerError, errors.ClientError, errors.APIError) as exc:
+                    status = getattr(exc, "status_code", getattr(exc, "code", None))
+                    fallback_reason = f"{model_name} returned HTTP {status}" if status else f"{model_name} API error: {exc}"
+                    logger.warning("Gemini notice model %s failed with status %s; trying next model: %s",
+                                   model_name, status, exc)
+                    continue
                 if assessment is not None:
                     break
         except Exception as exc:
@@ -158,7 +159,7 @@ Set violated_statutes to citations present in retrieved conflicts only. lawfully
     else:
         # Money remains sourced from SQL even when the model returns a different value.
         assessment = assessment.model_copy(update={"lawful_refundable_amount_inr": float(audit["lawful_refundable_balance_inr"])})
-        generation_mode = "llm"
+        generation_mode = f"llm:{model_used}"
     notice = _draft_notice(tenant_id, lease_id, dispute_summary, audit, conflicts, assessment)
     return {"tenant_id": tenant_id, "lease_id": lease_id, "risk_assessment": assessment.model_dump(),
             "legal_notice": notice, "generation_mode": generation_mode, "model_used": model_used,

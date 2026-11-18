@@ -2,7 +2,7 @@
 
 > **Demo video:** Record a 45-second walkthrough with macOS Screenshot (`Cmd + Shift + 5`) and add the resulting clip here before publishing.
 
-LeaseLens is a local-first rental agreement and deposit dispute research demo. It indexes clauses from PDFs, retrieves lease and reference text with PostgreSQL full-text search plus pgvector, and reranks each corpus independently with FlashRank (up to two lease clauses and two statute references) so one corpus cannot crowd out the other. It exposes retrieval, deterministic ledger, and notice-drafting tools through FastMCP. Gemini notice drafting tries an ordered set of Flash models with bounded retries and falls back to a validated deterministic risk assessment and notice when the API is unavailable.
+LeaseLens is a local-first rental agreement and deposit dispute research demo. It indexes clauses from PDFs, retrieves lease and reference text with PostgreSQL full-text search plus pgvector, and reranks each corpus independently with FlashRank (up to two lease clauses and two statute references) so one corpus cannot crowd out the other. It exposes retrieval, deterministic ledger, and notice-drafting tools through FastMCP. Gemini calls try the stable Flash model chain `gemini-3.5-flash-lite`, `gemini-3.6-flash`, `gemini-3.7-flash`, then `gemini-3.8-flash`, moving to the next model after an API error and falling back to deterministic retrieval-grounded output if all attempts fail. The UI identifies the selected Gemini model or deterministic fallback below replies and notices.
 
 ## Architecture
 
@@ -19,7 +19,10 @@ flowchart LR
   MCP1 --> GEM[Gemini 2.5 Flash agent]
   MCP2 --> GEM
   GEM --> MCP3[FastMCP notice server + Pydantic]
-  MCP1 --> UI[Streamlit dashboard]
+  MCP1 --> CHAT[Streamlit conversational chat]
+  MCP2 --> CHAT
+  CHAT --> GEM
+  MCP1 --> UI[Streamlit deposit and dispute audit]
   MCP2 --> UI
   MCP3 --> UI
 ```
@@ -40,10 +43,45 @@ python -m ingestion.ingest_data --seed
 python -m eval.evaluate_rag
 ```
 
-Run the agent with `python -m agent.orchestrator` or launch the UI with `streamlit run app.py`. To index another agreement:
+Run the agent with `python -m agent.orchestrator` or launch the UI with `streamlit run app.py`. The Streamlit workspace has two tabs:
+
+- **💬 Chat with Your Lease PDF:** multi-turn, retrieval-grounded Q&A with starter questions for lock-in/notice, deposits, maintenance, and eviction; inline clause/page and statutory citations; expandable retrieved evidence; and legal notice generation from the chat.
+- **⚖️ Full Deposit & Dispute Audit:** side-by-side lease/statute evidence, the deterministic SQL deposit audit, risk assessment, and downloadable text notice.
+
+### Try a custom PDF immediately
+
+The repository includes a fictional two-page Bengaluru rental agreement at [`sample_docs/sample_bengaluru_lease.pdf`](sample_docs/sample_bengaluru_lease.pdf), covering rent, deposit, lock-in and notice, a painting deduction, and appliance maintenance. To regenerate it with the installed `pypdf` dependency, run:
+
+```bash
+python sample_docs/generate_sample_lease.py
+```
+
+In the app, turn off **Use Rahul demo case**, enter a new tenant and lease ID, set rent to `30000` and deposit to `150000`, upload the sample PDF, and click **Ingest PDF**. Then ask questions in the chat tab or use the audit tab. The equivalent CLI ingestion command is:
+
+```bash
+python -m ingestion.ingest_data --pdf sample_docs/sample_bengaluru_lease.pdf --tenant-id tenant_123 --lease-id lease_123 --rent 30000 --deposit 150000
+```
+
+### End-to-end verification
+
+With Docker/PostgreSQL running and dependencies installed, execute the repeatable integration suite from the repository root:
+
+```bash
+python tests/run_full_verification.py
+```
+
+It checks schema/indexes, tenant isolation, hybrid citations, exact demo ledger math, sample PDF ingestion and three-turn chat, 404/503 model fallback order, notice schema, both Streamlit tab workflows and downloads, the multi-MCP CLI workflow, and the RAG benchmark. Temporary PDF test rows are removed even if an assertion fails. It writes the observed results to [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md). With `GEMINI_API_KEY` configured, backend chat, notice, and CLI checks exercise the live Gemini fallback chain; UI interaction checks use deterministic fallback for repeatability.
+
+To index another agreement:
 
 ```bash
 python -m ingestion.ingest_data --pdf /path/to/agreement.pdf --tenant-id tenant_123 --lease-id lease_123
+```
+
+Supply rent and deposit together to create the deterministic ledger account for a newly ingested lease:
+
+```bash
+python -m ingestion.ingest_data --pdf /path/to/agreement.pdf --tenant-id tenant_123 --lease-id lease_123 --rent 30000 --deposit 150000
 ```
 
 Compose starts the database as container `leaselens-db`, database `leaselens`, on host port 5433 (the host's 5432 is already used by Homebrew PostgreSQL 18). To inspect it, run `docker exec -it leaselens-db psql -U leaselens -d leaselens -c '\\dt'`.

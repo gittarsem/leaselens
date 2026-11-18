@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+from decimal import Decimal
 from pathlib import Path
 
 import psycopg
@@ -70,7 +71,7 @@ def add_demo(conn):
 
 def split_clauses(text: str):
     # Headings such as 1., 1.2, Clause 4, or SECTION 7 start a new chunk.
-    matches = list(re.finditer(r"(?im)^\s*(?:(?:clause|section)\s+)?(\d+(?:\.\d+)*[A-Z]?)\s*[).:-]?\s+", text))
+    matches = list(re.finditer(r"(?im)^\s*(?:(?:clause|section)\s+)?(\d+(?:\.\d+)*[A-Z]?)\s*(?:\([^\n)]*\))?\s*[).:-]?\s+", text))
     if not matches:
         cleaned = re.sub(r"\s+", " ", text).strip()
         return [(f"p{i // 1500 + 1}", cleaned[i:i + 1500]) for i in range(0, len(cleaned), 1500) if cleaned[i:i + 1500]]
@@ -94,12 +95,33 @@ def ingest_pdf(path: Path, tenant_id: str, lease_id: str):
                   VALUES (%s,%s,%s,%s,%s,%s)""", (tenant_id, lease_id, number, page_number, content, vector))
 
 
+def ingest_lease_pdf(path: Path, tenant_id: str, lease_id: str,
+                     monthly_rent_inr: Decimal | None = None,
+                     deposit_paid_inr: Decimal | None = None):
+    """Ingest PDF clauses and optionally establish the lease's financial account."""
+    if (monthly_rent_inr is None) != (deposit_paid_inr is None):
+        raise ValueError("monthly_rent_inr and deposit_paid_inr must be supplied together")
+    if monthly_rent_inr is not None and (monthly_rent_inr <= 0 or deposit_paid_inr < 0):
+        raise ValueError("rent must be positive and deposit must be non-negative")
+    ingest_pdf(path, tenant_id, lease_id)
+    if monthly_rent_inr is not None:
+        with connect() as conn:
+            conn.execute("""INSERT INTO lease_accounts(tenant_id,lease_id,monthly_rent_inr,deposit_paid_inr)
+              VALUES (%s,%s,%s,%s)
+              ON CONFLICT (tenant_id,lease_id) DO UPDATE SET
+                monthly_rent_inr=EXCLUDED.monthly_rent_inr,
+                deposit_paid_inr=EXCLUDED.deposit_paid_inr""",
+              (tenant_id, lease_id, monthly_rent_inr, deposit_paid_inr))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", action="store_true", help="Load statutory clauses and lease_001 demo clauses")
     parser.add_argument("--pdf", type=Path, help="Rental agreement PDF to ingest")
     parser.add_argument("--tenant-id", default="user_rahul")
     parser.add_argument("--lease-id", default="lease_001")
+    parser.add_argument("--rent", type=Decimal, help="Monthly rent in INR for the lease account")
+    parser.add_argument("--deposit", type=Decimal, help="Deposit paid in INR for the lease account")
     args = parser.parse_args()
     if not args.seed and not args.pdf:
         parser.error("supply --seed and/or --pdf")
@@ -107,7 +129,11 @@ def main():
         if args.seed:
             add_demo(conn)
     if args.pdf:
-        ingest_pdf(args.pdf, args.tenant_id, args.lease_id)
+        if (args.rent is None) != (args.deposit is None):
+            parser.error("--rent and --deposit must be supplied together")
+        ingest_lease_pdf(args.pdf, args.tenant_id, args.lease_id, args.rent, args.deposit)
+    elif args.rent is not None or args.deposit is not None:
+        parser.error("--rent and --deposit require --pdf")
     print("Ingestion complete.")
 
 

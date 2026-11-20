@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const subPath = parsed.searchParams.get("__path") || "";
   parsed.searchParams.delete("__path");
   const qs = parsed.searchParams.toString();
-  const targetUrl = `https://hugtarsem-leaselens.hf.space/api/${subPath}${qs ? `?${qs}` : ""}`;
+  const targetUrl = `https://hugtarsem-leaselens.hf.space/backend/${subPath}${qs ? `?${qs}` : ""}`;
 
   const headers = { ...req.headers };
   delete headers.host;

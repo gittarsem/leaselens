@@ -477,7 +477,7 @@ export default function App() {
 
         {/* Right: + Upload Lease PDF and lease selector */}
         <div className="app-header-right">
-          <button className="upload-btn" onClick={() => setModalOpen(true)}>
+          <button className="upload-btn whitespace-nowrap shrink-0" onClick={() => setModalOpen(true)}>
             <Plus size={14} /> Upload Lease PDF
           </button>
 

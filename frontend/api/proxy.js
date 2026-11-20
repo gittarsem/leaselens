@@ -1,4 +1,10 @@
-module.exports = async function handler(req, res) {
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default async function handler(req, res) {
   const parsed = new URL(req.url, "http://localhost");
   const subPath = parsed.searchParams.get("__path") || "";
   parsed.searchParams.delete("__path");
@@ -35,10 +41,4 @@ module.exports = async function handler(req, res) {
 
   const arrayBuffer = await upstream.arrayBuffer();
   res.send(Buffer.from(arrayBuffer));
-};
-
-module.exports.config = {
-  api: {
-    bodyParser: false,
-  },
-};
+}

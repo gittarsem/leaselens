@@ -2,33 +2,49 @@
 import asyncio
 import json
 import os
+from pathlib import Path
+from uuid import uuid4
 from decimal import Decimal
 
 import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
+from agent.orchestrator import clear_chat_history, load_chat_history
+
 st.set_page_config(page_title="LeaseLens", page_icon="🏠", layout="wide")
 st.title("🏠 LeaseLens")
 st.caption("Rental agreement research, deposit audit, and dispute notice drafting")
 
 with st.sidebar:
     st.subheader("Case")
-    tenant_id = st.text_input("Tenant ID", "user_rahul")
-    lease_id = st.text_input("Lease ID", "lease_001")
-    demo = st.toggle("Use Rahul demo case", value=True)
+    tenant_id = st.text_input("Tenant ID", "user_rahul", key="tenant_id")
+    lease_id = st.text_input("Lease ID", "lease_001", key="lease_id")
+    demo = st.toggle("Use Rahul demo case", value=True, key="demo_case")
     uploaded = st.file_uploader("Upload a rental agreement (PDF)", type=["pdf"], disabled=demo)
     rent = st.number_input("Monthly rent (INR)", min_value=1, value=30000, step=1000, disabled=demo)
     deposit = st.number_input("Deposit paid (INR)", min_value=0, value=150000, step=5000, disabled=demo)
     if uploaded and not demo and st.button("Ingest PDF"):
         os.makedirs("uploads", exist_ok=True)
-        path = os.path.join("uploads", uploaded.name)
+        safe_filename = Path(uploaded.name).name or "agreement.pdf"
+        path = os.path.join("uploads", f"{uuid4().hex}_{safe_filename}")
         with open(path, "wb") as f:
             f.write(uploaded.getvalue())
         from ingestion.ingest_data import ingest_lease_pdf
         ingest_lease_pdf(__import__("pathlib").Path(path), tenant_id, lease_id,
                          Decimal(str(rent)), Decimal(str(deposit)))
+        st.session_state["active_pdf_lease"] = (tenant_id, lease_id, uploaded.name)
+        st.session_state["active_chat_case"] = (demo, tenant_id, lease_id)
+        st.session_state["chat_history"] = load_chat_history(tenant_id, lease_id)
+        st.session_state.pop("chat_notice", None)
         st.success("PDF clauses and lease financial account indexed for this tenant and lease.")
+
+
+active_case_key = (demo, tenant_id, lease_id)
+if st.session_state.get("active_chat_case") != active_case_key:
+    st.session_state["chat_history"] = load_chat_history(tenant_id, lease_id)
+    st.session_state["active_chat_case"] = active_case_key
+    st.session_state.pop("chat_notice", None)
 
 
 def ensure_demo_seeded():
@@ -128,11 +144,19 @@ tabs = st.tabs(["💬 Chat with Your Lease PDF", "⚖️ Full Deposit & Dispute 
 
 with tabs[0]:
     st.subheader("Chat with Your Lease Agreement & Legal Advisor")
-    st.caption("Ask about your uploaded agreement, deposit, repairs, or tenant rights. Each answer retrieves fresh case evidence.")
+    st.caption("Ask anything about your active lease, deposit, repairs, or tenant rights. Attach screenshots in the composer; answers retrieve fresh lease, statute, and ledger evidence.")
+    if demo:
+        st.info(f"Active lease: Rahul demo · {tenant_id} / {lease_id}")
+    else:
+        active_pdf = st.session_state.get("active_pdf_lease")
+        pdf_name = active_pdf[2] if active_pdf and active_pdf[:2] == (tenant_id, lease_id) else f"PDF lease {lease_id}"
+        st.info(f"Active PDF lease: {pdf_name} · tenant `{tenant_id}` · lease `{lease_id}`")
     if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
+        st.session_state["chat_history"] = load_chat_history(tenant_id, lease_id)
     if st.button("Clear Chat"):
+        clear_chat_history(tenant_id, lease_id)
         st.session_state["chat_history"] = []
+        st.session_state.pop("chat_notice", None)
         st.rerun()
 
     starter_questions = [
@@ -150,10 +174,16 @@ with tabs[0]:
     history = st.session_state["chat_history"]
     for message in history:
         with st.chat_message(message["role"]):
+            if message["role"] == "user" and message.get("attachments"):
+                names = ", ".join(item.get("filename", "image") for item in message["attachments"])
+                st.caption(f"Attached image: {names} · Reattach it to ask a follow-up about its contents.")
             st.markdown(message["content"])
             if message["role"] == "assistant":
                 st.caption(model_status_caption(message.get("generation_mode"), message.get("model_used")))
                 evidence = message.get("evidence", {})
+                if not evidence:
+                    evidence = {"lease_citations": message.get("lease_citations", []),
+                                "statute_citations": message.get("statute_citations", [])}
                 with st.expander("Retrieved Lease & Statute Evidence"):
                     ev_left, ev_right = st.columns(2)
                     with ev_left:
@@ -166,17 +196,45 @@ with tabs[0]:
                         for item in evidence.get("statute_citations", []):
                             st.markdown(f"- **{item.get('citation')}**: {item.get('content', '')}")
 
-    user_message = starter_message or st.chat_input("Ask any question about your rental agreement or tenant rights...")
+    chat_input = st.chat_input(
+        "Ask anything about this lease or attach a screenshot…",
+        accept_file="multiple", file_type=["png", "jpg", "jpeg", "webp"])
+    user_message = starter_message
+    uploaded_images = []
+    if chat_input is not None and not starter_message:
+        user_message = chat_input.text
+        uploaded_images = list(chat_input.files)
+        if not user_message.strip() and uploaded_images:
+            user_message = "Please analyze the attached image in the context of my active lease."
     if user_message:
-        history.append({"role": "user", "content": user_message})
+        if uploaded_images and len(uploaded_images) > 3:
+            st.error("Please attach no more than 3 images.")
+            st.stop()
+        image_attachments = []
+        for image_file in uploaded_images or []:
+            image_bytes = image_file.getvalue()
+            if len(image_bytes) > 10 * 1024 * 1024:
+                st.error(f"{image_file.name} exceeds the 10 MB per-image limit.")
+                st.stop()
+            mime_type = image_file.type
+            if mime_type not in {"image/png", "image/jpeg", "image/webp"}:
+                st.error(f"{image_file.name} is not a supported image type.")
+                st.stop()
+            image_attachments.append({"filename": image_file.name, "mime_type": mime_type, "data": image_bytes})
         with st.chat_message("user"):
+            if image_attachments:
+                st.caption("Attached image: " + ", ".join(item["filename"] for item in image_attachments))
+                st.image([item.getvalue() for item in uploaded_images],
+                         caption=[item["filename"] for item in image_attachments],
+                         use_container_width=True)
             st.markdown(user_message)
         with st.chat_message("assistant"):
             with st.spinner("Retrieving lease, statute, and ledger evidence…"):
                 try:
                     ensure_demo_seeded()
                     from agent.orchestrator import chat_with_lease
-                    result = asyncio.run(chat_with_lease(tenant_id, lease_id, user_message, history[:-1]))
+                    result = asyncio.run(chat_with_lease(
+                        tenant_id, lease_id, user_message, None, image_attachments))
                     st.markdown(result["reply"])
                     st.caption(model_status_caption(result["generation_mode"], result.get("model_used")))
                     evidence = {"lease_citations": result["lease_citations"],
@@ -192,15 +250,14 @@ with tabs[0]:
                             st.markdown("**Statutory references**")
                             for item in evidence["statute_citations"]:
                                 st.markdown(f"- **{item.get('citation')}**: {item.get('content', '')}")
-                    history.append({"role": "assistant", "content": result["reply"],
-                                    "generation_mode": result["generation_mode"], "model_used": result.get("model_used"),
-                                    "evidence": evidence,
-                                    "ledger_audit": result.get("ledger_audit", {})})
-                    st.session_state["chat_history"] = history
+                    st.session_state["chat_history"] = load_chat_history(tenant_id, lease_id)
+                    # The submitted chat_input is rendered before the new
+                    # messages in this run. Rerun from persisted history so
+                    # the input is placed after the latest reply and remains
+                    # reachable for the next follow-up.
+                    st.rerun()
                 except Exception as exc:
                     st.error(f"Chat request failed: {exc}")
-                    history.pop()
-                    st.session_state["chat_history"] = history
 
     if any(message["role"] == "assistant" for message in st.session_state["chat_history"]):
         if st.button("Generate Legal Notice from Chat"):
@@ -208,7 +265,11 @@ with tabs[0]:
                 chat = st.session_state["chat_history"]
                 summary = "\n".join(f"{m['role'].title()}: {m['content']}" for m in chat)
                 latest = next(m for m in reversed(chat) if m["role"] == "assistant")
-                package = draft_notice(summary, latest["evidence"], latest.get("ledger_audit", {}),
+                latest_user_message = next(m["content"] for m in reversed(chat) if m["role"] == "user")
+                _, chat_audit = call_tools(latest_user_message)
+                evidence = {"lease_citations": latest.get("lease_citations", []),
+                            "statute_citations": latest.get("statute_citations", [])}
+                package = draft_notice(summary, evidence, chat_audit,
                                        force_deterministic=latest.get("generation_mode") == "deterministic_fallback")
                 st.session_state["chat_notice"] = package
             except Exception as exc:

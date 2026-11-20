@@ -45,6 +45,22 @@ CREATE TABLE IF NOT EXISTS ledger_transactions (
 );
 CREATE INDEX IF NOT EXISTS ledger_tenant_lease_idx ON ledger_transactions (tenant_id, lease_id);
 
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id SERIAL PRIMARY KEY,
+    tenant_id VARCHAR(100) NOT NULL,
+    lease_id VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    lease_citations JSONB NOT NULL DEFAULT '[]'::jsonb,
+    statute_citations JSONB NOT NULL DEFAULT '[]'::jsonb,
+    generation_mode VARCHAR(100),
+    attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb;
+CREATE INDEX IF NOT EXISTS idx_chat_messages_tenant_lease
+    ON chat_messages (tenant_id, lease_id, id ASC);
+
 INSERT INTO lease_accounts (tenant_id, lease_id, monthly_rent_inr, deposit_paid_inr)
 VALUES ('user_rahul', 'lease_001', 25000, 100000)
 ON CONFLICT (tenant_id, lease_id) DO NOTHING;

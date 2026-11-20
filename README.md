@@ -16,7 +16,7 @@ flowchart LR
   RAG --> RR[FlashRank reranker]
   RR --> MCP1[FastMCP retrieval server]
   DB --> MCP2[FastMCP ledger server]
-  MCP1 --> GEM[Gemini 2.5 Flash agent]
+  MCP1 --> GEM[Gemini Flash fallback chain]
   MCP2 --> GEM
   GEM --> MCP3[FastMCP notice server + Pydantic]
   MCP1 --> CHAT[Streamlit conversational chat]
@@ -45,8 +45,27 @@ python -m eval.evaluate_rag
 
 Run the agent with `python -m agent.orchestrator` or launch the UI with `streamlit run app.py`. The Streamlit workspace has two tabs:
 
-- **💬 Chat with Your Lease PDF:** multi-turn, retrieval-grounded Q&A with starter questions for lock-in/notice, deposits, maintenance, and eviction; inline clause/page and statutory citations; expandable retrieved evidence; and legal notice generation from the chat.
+- **💬 Chat with Your Lease PDF:** multi-turn, retrieval-grounded Q&A with starter questions for lock-in/notice, deposits, maintenance, and eviction; inline clause/page and statutory citations; expandable retrieved evidence; and legal notice generation from the chat. Messages and citations are stored in PostgreSQL by tenant and lease, so returning to a lease restores its conversation.
+
+The chat composer accepts open-ended questions and PNG, JPEG, or WebP screenshots/photos (up to three images, 10 MB each). Attached images are sent to Gemini with that turn's question and retrieved lease evidence; only the attachment filename and type are saved with chat history, while image bytes are not retained. If Gemini is unavailable, the deterministic fallback states that it could not analyze the image. To chat about a new agreement, turn off **Use Rahul demo case** in the sidebar, enter tenant/lease IDs, upload the PDF, and click **Ingest PDF**; the newly ingested lease becomes active in chat.
+
 - **⚖️ Full Deposit & Dispute Audit:** side-by-side lease/statute evidence, the deterministic SQL deposit audit, risk assessment, and downloadable text notice.
+
+### React workspace
+
+The React + TypeScript frontend and FastAPI bridge provide the dark glass workspace shown above while leaving the Streamlit app available. Install the Python requirements after activating `.venv`, then start the bridge and frontend in separate terminals:
+
+```bash
+# Terminal 1 — from the repository root
+uvicorn api.server:app --reload --port 8000
+
+# Terminal 2
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. The Vite dev server proxies `/api` to FastAPI on port `8000`. The bridge provides health, lease listing and upload, persistent chat with screenshot attachments, retrieval comparison, deposit audit, and notice generation. The original Streamlit app remains available with `streamlit run app.py`.
 
 ### Try a custom PDF immediately
 
@@ -70,7 +89,13 @@ With Docker/PostgreSQL running and dependencies installed, execute the repeatabl
 python tests/run_full_verification.py
 ```
 
-It checks schema/indexes, tenant isolation, hybrid citations, exact demo ledger math, sample PDF ingestion and three-turn chat, 404/503 model fallback order, notice schema, both Streamlit tab workflows and downloads, the multi-MCP CLI workflow, and the RAG benchmark. Temporary PDF test rows are removed even if an assertion fails. It writes the observed results to [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md). With `GEMINI_API_KEY` configured, backend chat, notice, and CLI checks exercise the live Gemini fallback chain; UI interaction checks use deterministic fallback for repeatability.
+It checks schema/indexes, tenant isolation, hybrid citations, exact demo ledger math, sample PDF ingestion and three-turn chat, 404/503 model fallback order, notice schema, both Streamlit tab workflows and downloads, the multi-MCP CLI workflow, and the RAG benchmark. Temporary PDF test rows are removed even if an assertion fails. It writes the observed results to [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md). With `GEMINI_API_KEY` configured, backend and UI interactions may exercise the live Gemini fallback chain; if all attempts fail, deterministic fallback is verified.
+
+To specifically verify PostgreSQL-backed conversation persistence, follow-up query rewriting, and tenant-scoped chat isolation, run:
+
+```bash
+python tests/test_persistent_chat.py
+```
 
 To index another agreement:
 
@@ -88,7 +113,7 @@ Compose starts the database as container `leaselens-db`, database `leaselens`, o
 
 ## Evaluation
 
-Run `python -m eval.evaluate_rag` after seeding. The script prints the measured result from the current local corpus. No benchmark has been recorded in this repository yet; paste the output below after a successful run rather than reporting invented results.
+Run `python -m eval.evaluate_rag` after seeding to print the measured result from the current local corpus. The values below are the recorded run for the seeded sample corpus.
 
 | Retrieval method | Context precision | Citation recall |
 |---|---:|---:|

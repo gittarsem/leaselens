@@ -1,4 +1,5 @@
 """Validated dispute assessment and formal notice drafting."""
+import asyncio
 import json
 import logging
 import os
@@ -6,14 +7,16 @@ from decimal import Decimal
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
-from google import genai
-from google.genai import types, errors
 from pydantic import BaseModel, ConfigDict, Field
 
-load_dotenv()
+load_dotenv(override=True)
 mcp = FastMCP("LeaseLens dispute package and notice")
-GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash"]
 logger = logging.getLogger(__name__)
+
+# Import the multi-provider router (lazy to avoid circular issues at module init)
+def _router():
+    from agent.llm_router import generate_with_handoff
+    return generate_with_handoff
 
 
 class DisputeRiskAssessment(BaseModel):
@@ -113,58 +116,80 @@ Lease reference: {lease_id}
 @mcp.tool()
 def generate_dispute_package(tenant_id: str, lease_id: str, dispute_summary: str, matched_conflicts: str,
                              ledger_audit: str, force_deterministic: bool = False) -> dict:
-    """Generate a source-grounded risk assessment and a landlord response notice."""
+    """Generate a source-grounded risk assessment and a landlord response notice via multi-provider router."""
     audit = _json_object(ledger_audit)
     if "lawful_refundable_balance_inr" not in audit:
         raise ValueError("ledger_audit must include lawful_refundable_balance_inr from the SQL audit tool.")
     conflicts = _json_object(matched_conflicts)
     assessment = None
     model_used = None
+    handoff_note = None
     fallback_reason = None
-    api_key = os.getenv("GEMINI_API_KEY")
-    if api_key and not force_deterministic:
-        client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=20000,
-            retry_options=types.HttpRetryOptions(attempts=1)))
-        prompt = f"""Assess this Indian residential tenancy dispute. This is information, not legal advice. Model Tenancy Act provisions are illustrative and state adoption may differ. Return only fields matching this schema; do not invent legal citations or findings. Use a conservative risk score and the deterministic ledger amount.
-Tenant: {tenant_id}; lease: {lease_id}
-Dispute: {dispute_summary}
-Retrieved conflicts: {matched_conflicts}
-Deterministic ledger audit: {ledger_audit}
-Set violated_statutes to citations present in retrieved conflicts only. lawfully refundable amount should equal ledger_audit lawful_refundable_balance_inr if parseable."""
+
+    if not force_deterministic:
+        system_prompt = (
+            "Assess this Indian residential tenancy dispute. This is information, not legal advice. "
+            "Model Tenancy Act provisions are illustrative and state adoption may differ. "
+            "Return ONLY a JSON object with exactly these fields: "
+            "risk_score_0_to_100 (int 0-100), risk_level (low|moderate|high), "
+            "unenforceable_lease_clauses (list[str]), violated_statutes (list[str]), "
+            "lawful_refundable_amount_inr (float >= 0). "
+            "Do not invent legal citations or findings not present in the retrieved conflicts. "
+            "Use a conservative risk score. "
+            f"lawful_refundable_amount_inr MUST equal {audit['lawful_refundable_balance_inr']} from the ledger audit."
+        )
+        user_message = (
+            f"Tenant: {tenant_id}; lease: {lease_id}\n"
+            f"Dispute: {dispute_summary}\n"
+            f"Retrieved conflicts: {matched_conflicts}\n"
+            f"Deterministic ledger audit: {ledger_audit}\n"
+            "Set violated_statutes to citations present in retrieved conflicts only."
+        )
         try:
-            for model_name in GEMINI_MODELS:
-                try:
-                    response = client.models.generate_content(model=model_name, contents=prompt,
-                        config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=DisputeRiskAssessment))
-                    assessment = DisputeRiskAssessment.model_validate_json(response.text)
-                    model_used = model_name
-                    logger.info("Notice assessment generated with %s", model_name)
-                except (errors.ServerError, errors.ClientError, errors.APIError) as exc:
-                    status = getattr(exc, "status_code", getattr(exc, "code", None))
-                    fallback_reason = f"{model_name} returned HTTP {status}" if status else f"{model_name} API error: {exc}"
-                    logger.warning("Gemini notice model %s failed with status %s; trying next model: %s",
-                                   model_name, status, exc)
-                    continue
-                if assessment is not None:
-                    break
+            generate_with_handoff = _router()
+            raw_reply, model_used, handoff_note = asyncio.get_event_loop().run_until_complete(
+                generate_with_handoff(
+                    system_prompt=system_prompt,
+                    user_message=user_message,
+                    response_json=True,
+                )
+            )
+            if raw_reply:
+                # Strip markdown code fences if present
+                cleaned = raw_reply.strip()
+                if cleaned.startswith("```"):
+                    cleaned = cleaned.split("```", 2)[1]
+                    if cleaned.startswith("json"):
+                        cleaned = cleaned[4:]
+                    cleaned = cleaned.rsplit("```", 1)[0].strip()
+                assessment = DisputeRiskAssessment.model_validate_json(cleaned)
+                logger.info("Notice assessment generated with %s", model_used)
         except Exception as exc:
-            # Keep the notice available when local SDK setup or an upstream call fails.
-            fallback_reason = f"Gemini unavailable: {exc}"
+            fallback_reason = f"Multi-provider router unavailable: {exc}"
+            logger.warning("Notice router failed; using deterministic fallback: %s", exc)
     else:
-        fallback_reason = "Gemini attempts were exhausted by the orchestrator" if force_deterministic else "GEMINI_API_KEY is not configured"
+        fallback_reason = "force_deterministic=True; skipping LLM assessment"
 
     if assessment is None:
         assessment = _fallback_assessment(audit, conflicts)
         generation_mode = "deterministic_fallback"
     else:
-        # Money remains sourced from SQL even when the model returns a different value.
+        # Money always sourced from SQL — override model value.
         assessment = assessment.model_copy(update={"lawful_refundable_amount_inr": float(audit["lawful_refundable_balance_inr"])})
         generation_mode = f"llm:{model_used}"
+
     notice = _draft_notice(tenant_id, lease_id, dispute_summary, audit, conflicts, assessment)
-    return {"tenant_id": tenant_id, "lease_id": lease_id, "risk_assessment": assessment.model_dump(),
-            "legal_notice": notice, "generation_mode": generation_mode, "model_used": model_used,
-            "fallback_reason": fallback_reason,
-            "disclaimer": "Draft for review. Confirm applicable state law and facts with a qualified local lawyer before sending."}
+    return {
+        "tenant_id": tenant_id,
+        "lease_id": lease_id,
+        "risk_assessment": assessment.model_dump(),
+        "legal_notice": notice,
+        "generation_mode": generation_mode,
+        "model_used": model_used,
+        "handoff_note": handoff_note,
+        "fallback_reason": fallback_reason,
+        "disclaimer": "Draft for review. Confirm applicable state law and facts with a qualified local lawyer before sending.",
+    }
 
 
 if __name__ == "__main__":

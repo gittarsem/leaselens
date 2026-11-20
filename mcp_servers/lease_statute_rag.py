@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 import psycopg
 from dotenv import load_dotenv
@@ -20,6 +21,10 @@ reranker = Ranker(model_name="ms-marco-MiniLM-L-12-v2")
 @mcp.tool()
 def compare_lease_against_statutes(tenant_id: str, lease_id: str, dispute_query: str) -> dict:
     """Find relevant lease and statutory clauses for a tenant dispute."""
+    # If the user names a clause, make that exact clause eligible for the
+    # response even when semantic ranking would otherwise bury it.
+    requested_clause_numbers = list(dict.fromkeys(
+        re.findall(r"\bclause\s+(\d+(?:\.\d+)*)\b", dispute_query, flags=re.IGNORECASE)))
     query_vector = embedder.encode(dispute_query, normalize_embeddings=True).tolist()
     sql = """
     WITH lease_vec AS (
@@ -61,6 +66,12 @@ def compare_lease_against_statutes(tenant_id: str, lease_id: str, dispute_query:
     with psycopg.connect(DATABASE_URL) as conn:
         register_vector(conn)
         rows = conn.execute(sql, {"embedding": query_vector, "tenant": tenant_id, "lease": lease_id, "query": dispute_query}).fetchall()
+        exact_clause_rows = []
+        if requested_clause_numbers:
+            exact_clause_rows = conn.execute("""SELECT id, clause_number, page_number, content
+                FROM lease_clauses
+                WHERE tenant_id=%s AND lease_id=%s AND clause_number = ANY(%s)""",
+                (tenant_id, lease_id, requested_clause_numbers)).fetchall()
     if not rows:
         return {"tenant_id": tenant_id, "lease_id": lease_id, "query": dispute_query, "matches": [], "message": "No indexed clauses found; ingest a lease and seed statutes first."}
     lease_docs, statute_docs = [], []
@@ -78,6 +89,20 @@ def compare_lease_against_statutes(tenant_id: str, lease_id: str, dispute_query:
     # displacing every statute citation (or vice versa) in a shared top-k.
     reranked_lease = rerank_corpus(lease_docs)
     reranked_statute = rerank_corpus(statute_docs)
+
+    # A user-specified clause is a direct lookup, not a semantic suggestion.
+    # Pin exact matches first, then fill the remaining result slot by rank.
+    exact_clause_docs = [
+        {"id": row[0], "text": row[3], "meta": {"corpus": "lease", "citation": row[1],
+         "page_number": row[2], "rrf_score": None, "explicit_clause_match": True}}
+        for row in exact_clause_rows
+    ]
+    if exact_clause_docs:
+        pinned_citations = {item["meta"]["citation"] for item in exact_clause_docs}
+        reranked_lease = exact_clause_docs[:2] + [
+            item for item in reranked_lease
+            if item.get("meta", {}).get("citation") not in pinned_citations
+        ][:max(0, 2 - len(exact_clause_docs))]
 
     def to_matches(items):
         result = []

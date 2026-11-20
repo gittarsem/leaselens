@@ -3,8 +3,8 @@ title: LeaseLens
 emoji: ⚖️
 colorFrom: gray
 colorTo: gray
-sdk: gradio
-app_file: app.py
+sdk: docker
+app_port: 7860
 ---
 
 # LeaseLens Backend API

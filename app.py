@@ -1,5 +1,6 @@
 import os
 import asyncio
+from contextlib import AsyncExitStack
 import spaces
 import gradio as gr
 from api.server import app as fastapi_app
@@ -13,7 +14,8 @@ with gr.Blocks() as demo:
     btn = gr.Button("Warmup")
     btn.click(fn=warmup, outputs=gr.Textbox())
 
-asyncio.run(fastapi_app.router.startup())
+_lifespan_stack = AsyncExitStack()
+asyncio.run(_lifespan_stack.enter_async_context(fastapi_app.router.lifespan_context(fastapi_app)))
 
 demo.launch(
     server_name="0.0.0.0",

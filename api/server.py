@@ -61,7 +61,7 @@ def _not_found(tenant_id: str, lease_id: str) -> None:
         raise HTTPException(status_code=404, detail="Lease workspace not found.")
 
 
-@app.get("/backend/health")
+@app.get("/health")
 def health() -> dict[str, Any]:
     postgres_ready = False
     pgvector_ready = False
@@ -84,7 +84,7 @@ def health() -> dict[str, Any]:
     }
 
 
-@app.get("/backend/leases")
+@app.get("/leases")
 def leases() -> list[dict[str, Any]]:
     try:
         ensure_chat_messages_table()
@@ -121,20 +121,20 @@ def leases() -> list[dict[str, Any]]:
         raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}") from exc
 
 
-@app.get("/backend/chat/{tenant_id}/{lease_id}")
+@app.get("/chat/{tenant_id}/{lease_id}")
 def get_chat(tenant_id: str, lease_id: str) -> list[dict[str, Any]]:
     _not_found(tenant_id, lease_id)
     return load_chat_history(tenant_id, lease_id)
 
 
-@app.delete("/backend/chat/{tenant_id}/{lease_id}")
+@app.delete("/chat/{tenant_id}/{lease_id}")
 def delete_chat(tenant_id: str, lease_id: str) -> dict[str, bool]:
     _not_found(tenant_id, lease_id)
     clear_chat_history(tenant_id, lease_id)
     return {"cleared": True}
 
 
-@app.delete("/backend/leases/{tenant_id}/{lease_id}")
+@app.delete("/leases/{tenant_id}/{lease_id}")
 def delete_lease(tenant_id: str, lease_id: str) -> dict[str, bool]:
     _not_found(tenant_id, lease_id)
     with psycopg.connect(DATABASE_URL) as conn:
@@ -146,7 +146,7 @@ def delete_lease(tenant_id: str, lease_id: str) -> dict[str, bool]:
     return {"deleted": True}
 
 
-@app.post("/backend/chat")
+@app.post("/chat")
 async def post_chat(
     tenant_id: str = Form(...),
     lease_id: str = Form(...),
@@ -174,7 +174,7 @@ async def post_chat(
         raise HTTPException(status_code=500, detail=f"Chat failed: {exc}") from exc
 
 
-@app.post("/backend/leases/upload")
+@app.post("/leases/upload")
 def upload_lease(
     file: UploadFile = File(...),
     tenant_id: str = Form(default=""),
@@ -217,7 +217,7 @@ def upload_lease(
         raise HTTPException(status_code=500, detail=f"PDF ingestion failed: {exc}") from exc
 
 
-@app.get("/backend/audit/{tenant_id}/{lease_id}")
+@app.get("/audit/{tenant_id}/{lease_id}")
 async def audit(tenant_id: str, lease_id: str, query: str = "Review this lease and its deposit deductions") -> dict[str, Any]:
     _not_found(tenant_id, lease_id)
     from fastmcp import Client
@@ -252,7 +252,7 @@ async def audit(tenant_id: str, lease_id: str, query: str = "Review this lease a
         raise HTTPException(status_code=500, detail=f"Audit failed: {exc}") from exc
 
 
-@app.post("/backend/notice")
+@app.post("/notice")
 async def notice(request: NoticeRequest) -> dict[str, Any]:
     from fastmcp import Client
 
@@ -272,7 +272,7 @@ async def notice(request: NoticeRequest) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Notice generation failed: {exc}") from exc
 
-@app.delete("/backend/leases/{tenant_id}/{lease_id}")
+@app.delete("/leases/{tenant_id}/{lease_id}")
 def delete_lease(tenant_id: str, lease_id: str):
     import os, psycopg
     db_url = os.getenv("DATABASE_URL", "postgresql://leaselens:leaselens@localhost:5432/leaselens")

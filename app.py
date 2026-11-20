@@ -22,5 +22,6 @@ demo.launch(
     server_port=int(os.environ.get("GRADIO_SERVER_PORT", 7860)),
     prevent_thread_lock=True,
 )
-demo.app.router.routes[0:0] = fastapi_app.router.routes
+demo.app.mount("/backend", fastapi_app)
+demo.app.router.routes.insert(0, demo.app.router.routes.pop())
 demo.block_thread()

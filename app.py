@@ -9,7 +9,8 @@ def warmup():
 with gr.Blocks() as demo:
     gr.Markdown("# LeaseLens API is live")
     btn = gr.Button("Warmup")
-    out = gr.Textbox()
-    btn.click(fn=warmup, outputs=out)
+    btn.click(fn=warmup, outputs=gr.Textbox())
 
-app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+demo.launch(server_name="0.0.0.0", server_port=7860, prevent_thread_lock=True)
+demo.app.include_router(fastapi_app.router)
+demo.block_thread()

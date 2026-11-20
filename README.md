@@ -1,7 +1,7 @@
 ---
 title: LeaseLens
 emoji: ⚖️
-colorFrom: stone
+colorFrom: gray
 colorTo: gray
 sdk: gradio
 app_file: app.py

@@ -23,13 +23,13 @@ demo.launch(
     prevent_thread_lock=True,
 )
 
-_gradio_stack = demo.app.middleware_stack or demo.app.build_middleware_stack()
+_gradio_app = demo.server.config.app
 
 async def _dispatch(scope, receive, send):
     if scope["type"] == "http" and scope.get("path", "").startswith("/api"):
         await fastapi_app(scope, receive, send)
     else:
-        await _gradio_stack(scope, receive, send)
+        await _gradio_app(scope, receive, send)
 
-demo.app.middleware_stack = _dispatch
+demo.server.config.app = _dispatch
 demo.block_thread()

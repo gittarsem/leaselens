@@ -1,7 +1,7 @@
 import os
 
 # =========================================================
-# CPU-only configuration
+# CPU-only configuration for AI inference
 # =========================================================
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -14,10 +14,26 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # =========================================================
 
 import gradio as gr
+import spaces
 import uvicorn
 from fastapi import FastAPI
 
 from api.server import app as backend_app
+
+
+# =========================================================
+# ZeroGPU Compatibility Function
+# =========================================================
+
+@spaces.GPU
+def zerogpu_compatibility():
+    """
+    Lightweight function to satisfy ZeroGPU startup requirements.
+
+    LeaseLens AI inference uses Gemini APIs and does not require
+    local GPU computation.
+    """
+    return "LeaseLens is running. AI inference is handled by Gemini API."
 
 
 # =========================================================
@@ -39,7 +55,16 @@ with gr.Blocks(title="LeaseLens") as demo:
         ### Backend Status
 
         FastAPI backend is available under `/api`.
+        AI processing is powered by Gemini API.
         """
+    )
+
+    status_button = gr.Button("Check Application Status")
+    status_output = gr.Textbox(label="Status")
+
+    status_button.click(
+        fn=zerogpu_compatibility,
+        outputs=status_output,
     )
 
 

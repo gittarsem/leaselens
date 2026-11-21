@@ -1,13 +1,13 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import {
-  ArrowDownRight, ArrowRight, ArrowUp, BadgeCheck,
+  ArrowDownRight, ArrowRight, ArrowUp,
   Check, ChevronDown,CircleHelp,
   FileCheck2, FilePlus2, FileText, FileWarning, Home, ImagePlus, IndianRupee, KeyRound, LoaderCircle,
   MessageSquare, Paperclip, Plus, RefreshCw, Scale, Search, Send, ShieldCheck, Sparkles, Trash2, UploadCloud,
   X,
 } from 'lucide-react'
-import { api, ChatMessage, Citation, Lease } from './api'
+import { api, ChatMessage, Lease } from './api'
 import { LeaseBackground } from './components/LeaseBackground'
 import { HowItWorksPage } from './components/HowItWorksPage'
 import { DeveloperPage } from './components/DeveloperPage'
@@ -61,16 +61,6 @@ function formatINR(amount?: number | null) {
   return amount == null ? '—' : `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(amount)}`
 }
 
-function CitationCard({ item, statute = false }: { item: Citation; statute?: boolean }) {
-  return <article className="citation-card">
-    <div className="citation-top"><span className="citation-number">{item.citation || 'Reference'}</span>
-      {item.page_number != null && <span>Page {item.page_number}</span>}
-    </div>
-    <p>{item.content || 'No text was returned for this citation.'}</p>
-    <div className="citation-foot"><span>{statute ? 'Statutory protection' : 'Lease evidence'}</span>
-    </div>
-  </article>
-}
 
 export default function App() {
   const [page, setPage] = useState<'landing' | 'workspace' | 'how-it-works' | 'developer'>(() => {

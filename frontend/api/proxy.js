@@ -8,27 +8,32 @@ export default async function handler(req, res) {
   try {
     const parsed = new URL(req.url, "http://localhost");
 
-    // Extract the actual backend path from Vercel rewrite
-    const subPath = parsed.searchParams.get("__path") || "";
+    // Extract the backend path from Vercel rewrite
+    let subPath = parsed.searchParams.get("__path") || "";
 
-    // Remove internal rewrite parameter
+    // Clean path
+    subPath = subPath.replace(/^\/+/, "");
+
+    // Remove Vercel rewrite parameters
     parsed.searchParams.delete("__path");
+    parsed.searchParams.delete("path");
 
     const queryString = parsed.searchParams.toString();
 
-    // Hugging Face FastAPI backend
+    // Construct Hugging Face backend URL
     const targetUrl = `https://hugtarsem-leaselens.hf.space/api/${subPath}${
       queryString ? `?${queryString}` : ""
     }`;
 
-    // Forward request headers
+    // Forward headers
     const headers = { ...req.headers };
 
     delete headers.host;
     delete headers.connection;
     delete headers["content-length"];
+    delete headers["transfer-encoding"];
 
-    // Avoid Gradio frontend interception
+    // Hugging Face backend
     headers.origin = "https://hugtarsem-leaselens.hf.space";
     headers.referer = "https://hugtarsem-leaselens.hf.space/";
 
@@ -48,6 +53,8 @@ export default async function handler(req, res) {
 
     console.log("Proxy request:", {
       method: req.method,
+      originalUrl: req.url,
+      subPath,
       targetUrl,
     });
 
@@ -57,10 +64,9 @@ export default async function handler(req, res) {
       body,
     });
 
-    // Forward status
     res.status(upstream.status);
 
-    // Forward headers
+    // Forward response headers
     upstream.headers.forEach((value, key) => {
       const excludedHeaders = [
         "content-encoding",
@@ -73,7 +79,6 @@ export default async function handler(req, res) {
       }
     });
 
-    // Forward response body
     const responseBuffer = Buffer.from(
       await upstream.arrayBuffer()
     );

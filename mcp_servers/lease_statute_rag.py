@@ -27,8 +27,7 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 from flashrank import Ranker, RerankRequest
 from pgvector.psycopg import register_vector
-from sentence_transformers import SentenceTransformer
-
+from embeddings import generate_embedding as gemini_generate_embedding
 
 # =========================================================
 # Configuration
@@ -43,10 +42,7 @@ DATABASE_URL = os.getenv(
     "postgresql://leaselens:leaselens@localhost:5432/leaselens",
 )
 
-embedder = SentenceTransformer(
-    "BAAI/bge-small-en-v1.5",
-    device="cpu"
-)
+
 
 reranker = Ranker(
     model_name="ms-marco-MiniLM-L-12-v2"
@@ -381,10 +377,10 @@ def compare_lease_against_statutes(
     # Generate query embedding
     # -----------------------------------------------------
 
-    query_vector = embedder.encode(
-        retrieval_query,
-        normalize_embeddings=True,
-    ).tolist()
+    query_vector = gemini_generate_embedding(
+    retrieval_query,
+    "RETRIEVAL_QUERY",
+)
 
     # -----------------------------------------------------
     # Hybrid Retrieval SQL

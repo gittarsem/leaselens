@@ -1,14 +1,13 @@
 import os
 
 # =========================================================
-# Force CPU-only execution before importing ML dependencies
+# CPU-only configuration
 # =========================================================
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["USE_TF"] = "0"
 os.environ["USE_FLAX"] = "0"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-os.environ["GRADIO_SSR_MODE"] = "false"
 
 # =========================================================
 # Imports
@@ -71,10 +70,7 @@ def host_health():
 # Mount Backend API
 # =========================================================
 
-app.mount(
-    "/api",
-    backend_app,
-)
+app.mount("/api", backend_app)
 
 
 # =========================================================
@@ -93,7 +89,6 @@ app = gr.mount_gradio_app(
 # =========================================================
 
 if __name__ == "__main__":
-
     uvicorn.run(
         app,
         host="0.0.0.0",

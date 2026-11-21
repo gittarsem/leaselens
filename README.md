@@ -1,9 +1,9 @@
 ---
 title: LeaseLens
 emoji: ⚖️
-colorFrom: gray
-colorTo: gray
-sdk: docker
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+app_file: app.py
+pinned: false
 ---
-
-# LeaseLens Backend API

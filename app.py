@@ -1,37 +1,59 @@
 import os
-import spaces
+
+os.environ["GRADIO_SSR_MODE"] = "false"
+
 import gradio as gr
 import uvicorn
 
-from api.server import app as fastapi_app
+from fastapi import FastAPI
+from api.server import app as backend_app
 
 
-@spaces.GPU
-def warmup():
-    return "ready"
+# -----------------------------
+# Gradio UI
+# -----------------------------
+with gr.Blocks(title="LeaseLens") as demo:
+    gr.Markdown(
+        """
+        # ⚖️ LeaseLens
+
+        AI-powered lease analysis and tenant assistance.
+        """
+    )
+
+    gr.Markdown(
+        """
+        ### Backend Status
+
+        FastAPI backend is available under `/api`.
+        """
+    )
 
 
-with gr.Blocks() as demo:
-    gr.Markdown("# LeaseLens API is live")
-    gr.Markdown("FastAPI backend is running.")
-
-    btn = gr.Button("Warmup")
-    output = gr.Textbox(label="Status")
-
-    btn.click(fn=warmup, outputs=output)
+# -----------------------------
+# Main FastAPI application
+# -----------------------------
+host_app = FastAPI(title="LeaseLens Host")
 
 
-# Mount Gradio UI onto FastAPI
-fastapi_app = gr.mount_gradio_app(
-    fastapi_app,
+# Mount backend API
+host_app.mount("/api", backend_app)
+
+
+# Mount Gradio UI
+app = gr.mount_gradio_app(
+    host_app,
     demo,
-    path="/",
+    path="/"
 )
 
 
+# -----------------------------
+# Start server
+# -----------------------------
 if __name__ == "__main__":
     uvicorn.run(
-        fastapi_app,
+        app,
         host="0.0.0.0",
-        port=int(os.environ.get("GRADIO_SERVER_PORT", 7860)),
+        port=7860
     )

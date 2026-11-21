@@ -10,7 +10,7 @@ _orig_launch = gr.Blocks.launch
 def _custom_launch(self, *args, **kwargs):
     kwargs["prevent_thread_lock"] = True
     res = _orig_launch(self, *args, **kwargs)
-    self.app.mount("/backend", fastapi_app)
+    self.app.mount("/api", fastapi_app)
     self.app.router.routes.insert(0, self.app.router.routes.pop())
     self.block_thread()
     return res

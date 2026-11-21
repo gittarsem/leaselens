@@ -44,7 +44,8 @@ DATABASE_URL = os.getenv(
 )
 
 embedder = SentenceTransformer(
-    "BAAI/bge-small-en-v1.5"
+    "BAAI/bge-small-en-v1.5",
+    device="cpu"
 )
 
 reranker = Ranker(

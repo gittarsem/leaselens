@@ -20,7 +20,15 @@ from __future__ import annotations
 
 import os
 import re
+import sys
+from pathlib import Path
 from typing import Any
+
+# Ensure project root is available when FastMCP launches this file as a subprocess.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import psycopg
 from dotenv import load_dotenv

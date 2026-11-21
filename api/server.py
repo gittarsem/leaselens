@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import traceback
 import uuid
@@ -16,7 +17,40 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-load_dotenv(override=True)
+load_dotenv(override=False)
+
+from fastmcp import Client
+from fastmcp.client.transports import StdioTransport
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def create_mcp_client(server_path: str) -> Client:
+    """Create an MCP client with deployment secrets explicitly passed to its subprocess."""
+    absolute_server_path = PROJECT_ROOT / server_path
+
+    child_env = os.environ.copy()
+
+    # Explicitly preserve the keys used by MCP subprocesses. This also makes
+    # the intent clear when running in Hugging Face Spaces or other containers.
+    for key in (
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "DATABASE_URL",
+        "OPENROUTER_API_KEY",
+    ):
+        if os.getenv(key):
+            child_env[key] = os.environ[key]
+
+    transport = StdioTransport(
+        command=sys.executable,
+        args=[str(absolute_server_path)],
+        env=child_env,
+        cwd=str(PROJECT_ROOT),
+    )
+
+    return Client(transport)
+
 
 from agent.orchestrator import (
     DATABASE_URL,
@@ -640,13 +674,11 @@ async def audit(
         lease_id,
     )
 
-    from fastmcp import Client
-
     try:
 
         async with (
-            Client("mcp_servers/lease_statute_rag.py") as rag,
-            Client("mcp_servers/rent_ledger.py") as ledger,
+            create_mcp_client("mcp_servers/lease_statute_rag.py") as rag,
+            create_mcp_client("mcp_servers/rent_ledger.py") as ledger,
         ):
 
             rag_result = await rag.call_tool(
@@ -760,8 +792,6 @@ async def notice(
     request: NoticeRequest,
 ) -> dict[str, Any]:
 
-    from fastmcp import Client
-
     if (
         "lawful_refundable_balance_inr"
         not in request.ledger_audit
@@ -774,7 +804,7 @@ async def notice(
 
     try:
 
-        async with Client(
+        async with create_mcp_client(
             "mcp_servers/notice_drafter.py",
         ) as notice_client:
 

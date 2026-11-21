@@ -1,0 +1,1902 @@
+[
+  {
+    "test_number": 1,
+    "question": "What is my monthly rent?",
+    "status_code": 422,
+    "duration_seconds": 0.02,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 2,
+    "question": "How much security deposit have I paid?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 3,
+    "question": "What is the lock-in period?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 4,
+    "question": "What is the notice period?",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 5,
+    "question": "What happens if I leave during the lock-in period?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 6,
+    "question": "What is the late rent penalty?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 7,
+    "question": "Can the landlord terminate my lease immediately?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 8,
+    "question": "Find all contradictions in my lease agreement.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 9,
+    "question": "Does my lease mention different rent amounts in different clauses?",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 10,
+    "question": "Are there conflicting security deposit amounts?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 11,
+    "question": "Is the notice period consistent throughout the agreement?",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 12,
+    "question": "Are there contradictory rules regarding eviction?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 13,
+    "question": "Compare the lock-in period and termination conditions across all clauses.",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 14,
+    "question": "Find duplicate clauses in my lease.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 15,
+    "question": "Are there clauses that discuss the same topic but impose different obligations?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 16,
+    "question": "Identify overlapping clauses related to security deposit deductions.",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 17,
+    "question": "Are painting and maintenance obligations repeated in multiple places?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 18,
+    "question": "Find clauses that are semantically similar even if their wording differs.",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 19,
+    "question": "Calculate my total potential financial exposure under this lease.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 20,
+    "question": "What penalties could I face if I terminate the lease early?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 21,
+    "question": "How much can my landlord potentially deduct from my security deposit?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 22,
+    "question": "Calculate the maximum quantified deductions mentioned in my lease.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 23,
+    "question": "What financial risks are quantified and which are unquantified?",
+    "status_code": 422,
+    "duration_seconds": 0.02,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 24,
+    "question": "If I leave early and the landlord deducts painting charges, what is my potential loss?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 25,
+    "question": "Can you calculate my exposure without double-counting the security deposit?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 26,
+    "question": "Compare the rent in my lease with the rent stored in the database.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 27,
+    "question": "Compare the security deposit mentioned in my lease with the database record.",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 28,
+    "question": "Find all discrepancies between my lease document and structured database records.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 29,
+    "question": "Which source should I trust if the lease and database contain different amounts?",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 30,
+    "question": "Create a table of all lease vs database inconsistencies.",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 31,
+    "question": "Is the painting deduction clause fair?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 32,
+    "question": "Can the landlord charge me ₹32,000 for painting without providing invoices?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 33,
+    "question": "Am I responsible for replacing the geyser?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 34,
+    "question": "Can the landlord retain my security deposit until they are satisfied with the apartment?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 35,
+    "question": "Is the seven-day eviction clause enforceable?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 36,
+    "question": "Can the landlord take possession without going through the legal process?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 37,
+    "question": "What evidence should I collect before vacating the apartment?",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 38,
+    "question": "Review my entire lease and identify all tenant-unfavorable clauses.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 39,
+    "question": "Give me a complete risk assessment of my lease.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 40,
+    "question": "Rank the clauses from highest to lowest risk.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 41,
+    "question": "Identify legal concerns, financial risks, contradictions, duplicate clauses, and ambiguous terms.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 42,
+    "question": "Give me a negotiation checklist before signing this lease.",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 43,
+    "question": "What amendments should I request from my landlord?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 44,
+    "question": "What about clause 1.1?",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 45,
+    "question": "Is that amount refundable?",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 46,
+    "question": "What if I leave after 3 months?",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 47,
+    "question": "Compare that with the painting charges.",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 48,
+    "question": "Which clause supports your conclusion?",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 49,
+    "question": "Show me the evidence for this.",
+    "status_code": 422,
+    "duration_seconds": 0.01,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  },
+  {
+    "test_number": 50,
+    "question": "Calculate it again, but exclude the refundable deposit.",
+    "status_code": 422,
+    "duration_seconds": 0.0,
+    "success": false,
+    "response": {
+      "detail": [
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "tenant_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "lease_id"
+          ],
+          "msg": "Field required",
+          "input": null
+        },
+        {
+          "type": "missing",
+          "loc": [
+            "body",
+            "message"
+          ],
+          "msg": "Field required",
+          "input": null
+        }
+      ]
+    }
+  }
+]

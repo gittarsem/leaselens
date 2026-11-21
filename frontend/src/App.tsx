@@ -2,7 +2,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import {
   ArrowDownRight, ArrowRight, ArrowUp, BadgeCheck,
-  Check, ChevronDown, CircleHelp,
+  Check, ChevronDown,CircleHelp,
   FileCheck2, FilePlus2, FileText, FileWarning, Home, ImagePlus, IndianRupee, KeyRound, LoaderCircle,
   MessageSquare, Paperclip, Plus, RefreshCw, Scale, Search, Send, ShieldCheck, Sparkles, Trash2, UploadCloud,
   X,
@@ -726,15 +726,9 @@ function AttachmentPreview({ file, remove }: { file: File; remove: () => void })
 }
 
 function MessageBubble({ message }: { message: ChatMessage }) {
-  const [open, setOpen] = useState(false)
   const assistant = message.role === 'assistant'
   const imageUrls = message.imageUrls || []
   const attachmentNames = message.attachments?.map((item) => item.filename) || []
-
-  const leaseLabels = (message.lease_citations || []).map((item) => item.citation ? `Clause ${item.citation}` : '').filter(Boolean)
-  const statuteLabels = (message.statute_citations || []).map((item) => item.citation || '').filter(Boolean)
-  const previewLabels = [...leaseLabels, ...statuteLabels].slice(0, 2).join(', ')
-  const sourcesLabel = previewLabels ? `Sources (${previewLabels})` : 'Sources'
 
   return <article className={`message-row ${assistant ? 'assistant-row flex items-start gap-3 max-w-3xl' : 'user-row ml-auto max-w-2xl'}`}>
     {assistant && (
@@ -752,31 +746,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="message-content">
         {assistant ? <Markdown>{message.content}</Markdown> : message.content}
       </div>
-      {assistant && <>
-        <div className="verified-badge">
-          <BadgeCheck size={13} style={{ color: '#a6be9b' }} />
-          <span>Verified from Lease &amp; Law Records</span>
-        </div>
-        <button className="sources-pill" onClick={() => setOpen(!open)}>
-          <ShieldCheck size={14} />
-          <span>{open ? 'Hide' : 'View'} {sourcesLabel}</span>
-          <ChevronDown size={13} className={open ? 'rotate' : ''} />
-        </button>
-        {open && <div className="evidence-drawer">
-          <div>
-            <span className="evidence-heading">Lease Clauses</span>
-            {(message.lease_citations || []).length ? (
-              message.lease_citations?.map((item, index) => <CitationCard key={`${item.citation}-${index}`} item={item} />)
-            ) : <p className="empty-evidence">No lease clauses retrieved.</p>}
-          </div>
-          <div>
-            <span className="evidence-heading">Statutory References</span>
-            {(message.statute_citations || []).length ? (
-              message.statute_citations?.map((item, index) => <CitationCard key={`${item.citation}-${index}`} item={item} statute />)
-            ) : <p className="empty-evidence">No statutory references retrieved.</p>}
-          </div>
-        </div>}
-      </>}
+      
     </div>
   </article>
 }

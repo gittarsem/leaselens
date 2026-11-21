@@ -385,6 +385,10 @@ def compare_lease_against_statutes(
     # Generate query embedding
     # -----------------------------------------------------
 
+
+    print("MCP GEMINI KEY EXISTS:", bool(os.getenv("GEMINI_API_KEY")))
+    print("MCP GOOGLE KEY EXISTS:", bool(os.getenv("GOOGLE_API_KEY")))
+
     query_vector = gemini_generate_embedding(
     retrieval_query,
     "RETRIEVAL_QUERY",

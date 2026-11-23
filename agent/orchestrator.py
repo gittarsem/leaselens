@@ -14,6 +14,10 @@ import os
 
 import re
 
+import sys
+from pathlib import Path
+
+from fastmcp.client.transports import StdioTransport
 
 
 from contextlib import AsyncExitStack
@@ -38,7 +42,7 @@ from psycopg.types.json import Jsonb
 
 
 
-load_dotenv(override=True)
+load_dotenv(override=False)
 
 
 
@@ -79,6 +83,25 @@ DATABASE_URL = os.getenv(
 # DATABASE / CHAT HISTORY
 
 # =========================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def create_mcp_client(server_path: str) -> Client:
+    """
+    Create an MCP client with the parent process environment explicitly
+    forwarded to the MCP subprocess.
+    """
+    absolute_server_path = PROJECT_ROOT / server_path
+
+    transport = StdioTransport(
+        command=sys.executable,
+        args=[str(absolute_server_path)],
+        env=os.environ.copy(),
+        cwd=str(PROJECT_ROOT),
+    )
+
+    return Client(transport)
 
 
 
@@ -613,40 +636,26 @@ async def run(
 
 
     async with AsyncExitStack() as stack:
-
-
-
         rag = await stack.enter_async_context(
+        create_mcp_client("mcp_servers/lease_statute_rag.py")
+        )
 
-            Client(
-
-                "mcp_servers/lease_statute_rag.py"
-
-            )
-
+        ledger_client = await stack.enter_async_context(
+        create_mcp_client("mcp_servers/rent_ledger.py")
         )
 
 
 
         ledger = await stack.enter_async_context(
 
-            Client(
-
-                "mcp_servers/rent_ledger.py"
-
-            )
+            create_mcp_client("mcp_servers/rent_ledger.py")
 
         )
 
 
 
         notice = await stack.enter_async_context(
-
-            Client(
-
-                "mcp_servers/notice_drafter.py"
-
-            )
+            create_mcp_client("mcp_servers/notice_drafter.py")
 
         )
 
@@ -2024,11 +2033,7 @@ async def chat_with_lease(
 
         rag = await stack.enter_async_context(
 
-            Client(
-
-                "mcp_servers/lease_statute_rag.py"
-
-            )
+            create_mcp_client("mcp_servers/lease_statute_rag.py")
 
         )
 
@@ -2036,13 +2041,11 @@ async def chat_with_lease(
 
         ledger_client = await stack.enter_async_context(
 
-            Client(
-
-                "mcp_servers/rent_ledger.py"
+            create_mcp_client("mcp_servers/rent_ledger.py")
 
             )
 
-        )
+        
 
 
 

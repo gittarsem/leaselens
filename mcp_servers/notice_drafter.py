@@ -9,7 +9,9 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field
 
-load_dotenv(override=True)
+from agent.llm_router import generate_with_handoff
+
+load_dotenv(override=False)
 mcp = FastMCP("LeaseLens dispute package and notice")
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,18 @@ def _router():
     from agent.llm_router import generate_with_handoff
     return generate_with_handoff
 
+def _run_async(coro):
+    """Run an async coroutine safely from synchronous code."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    # A loop is already running in this thread.
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(asyncio.run, coro).result()
 
 class DisputeRiskAssessment(BaseModel):
     # Gemini's structured-output schema does not accept JSON Schema's
@@ -70,16 +84,25 @@ def _fallback_assessment(audit: dict, conflicts: dict) -> DisputeRiskAssessment:
     )
 
 
+def _money(value) -> str:
+    """Format INR using Decimal to avoid floating-point precision errors."""
+    try:
+        amount = Decimal(str(value or 0))
+    except Exception:
+        amount = Decimal("0")
+    return f"{amount:,.2f}"
+
+
 def _draft_notice(tenant_id: str, lease_id: str, dispute_summary: str, audit: dict,
                   conflicts: dict, assessment: DisputeRiskAssessment) -> str:
     lease_citations = conflicts.get("lease_citations", [])
     statute_citations = conflicts.get("statute_citations", [])
     deduction_lines = []
     for item in audit.get("transactions", []):
-        deduction_lines.append(f"- ₹{float(item.get('amount_inr', 0)):,.2f}: {item.get('description', 'Ledger item')} (receipt: {item.get('receipt_reference') or 'not provided'})")
+        deduction_lines.append(f"- ₹{_money(item.get('amount_inr', 0))}: {item.get('description', 'Ledger item')} (receipt: {item.get('receipt_reference') or 'not provided'})")
     if not deduction_lines:
         deduction_lines = [
-            f"- Claimed deductions: ₹{float(audit.get('total_claimed_deductions_inr', 0)):,.2f}; unreceipted portion: ₹{float(audit.get('unverified_deductions_without_receipts_inr', 0)):,.2f}.",
+            f"- Claimed deductions: ₹{_money(audit.get('total_claimed_deductions_inr', 0))}; unreceipted portion: ₹{_money(audit.get('unverified_deductions_without_receipts_inr', 0))}.",
         ]
     lease_lines = [f"- Clause {item.get('citation', 'unidentified')}: {item.get('content', '')}" for item in lease_citations]
     statute_lines = [f"- {item.get('citation', 'Unidentified reference')}: {item.get('content', '')}" for item in statute_citations]
@@ -92,7 +115,7 @@ Dear Landlord,
 
 I am writing about the security deposit and deductions claimed at the end of the tenancy. My dispute is: {dispute_summary}
 
-My ledger records a deposit of ₹{float(audit.get('deposit_paid_inr', 0)):,.2f}, claimed deductions of ₹{float(audit.get('total_claimed_deductions_inr', 0)):,.2f}, and ₹{assessment.lawful_refundable_amount_inr:,.2f} as the current refundable balance under the documented audit rule. The audit identifies ₹{float(audit.get('unverified_deductions_without_receipts_inr', 0)):,.2f} in claims without receipt references.
+My ledger records a deposit of ₹{_money(audit.get('deposit_paid_inr', 0))}, claimed deductions of ₹{_money(audit.get('total_claimed_deductions_inr', 0))}, and ₹{_money(audit.get('lawful_refundable_balance_inr', 0))} as the current refundable balance under the documented audit rule. The audit identifies ₹{_money(audit.get('unverified_deductions_without_receipts_inr', 0))} in claims without receipt references.
 
 Please provide an itemised account of every deduction, together with invoices, receipts, dated photographs, and the move-in/move-out inspection records supporting it. The disputed ledger items are:
 {chr(10).join(deduction_lines)}
@@ -103,12 +126,15 @@ The agreement clauses identified for review are:
 The statutory reference provisions identified for review are:
 {chr(10).join(statute_lines) if statute_lines else '- No statutory citation was returned for this query.'}
 
-I request payment of the currently calculated refundable balance of ₹{assessment.lawful_refundable_amount_inr:,.2f}, together with the supporting statement, within 14 days of receipt of this letter. Please respond in writing so the matter can be resolved amicably.
+I request payment of the currently calculated refundable balance of ₹{_money(audit.get('lawful_refundable_balance_inr', 0))}, together with the supporting statement, within 14 days of receipt of this letter. Please respond in writing so the matter can be resolved amicably.
 
 This letter is a request for settlement and does not waive any right or remedy available under the applicable agreement or state law. The cited Model Tenancy Act material is illustrative; the applicable state law and facts should be confirmed.
 
 Sincerely,
-Tenant: {tenant_id}
+
+[Tenant Full Name]
+[Contact Details]
+
 Lease reference: {lease_id}
 """
 
@@ -120,6 +146,15 @@ def generate_dispute_package(tenant_id: str, lease_id: str, dispute_summary: str
     audit = _json_object(ledger_audit)
     if "lawful_refundable_balance_inr" not in audit:
         raise ValueError("ledger_audit must include lawful_refundable_balance_inr from the SQL audit tool.")
+
+    try:
+        ledger_refund = Decimal(str(audit["lawful_refundable_balance_inr"]))
+    except Exception as exc:
+        raise ValueError("Ledger refundable balance must be a valid numeric amount.") from exc
+
+    if not ledger_refund.is_finite() or ledger_refund < 0:
+        raise ValueError("Ledger refundable balance must be finite and non-negative.")
+
     conflicts = _json_object(matched_conflicts)
     assessment = None
     model_used = None
@@ -147,13 +182,14 @@ def generate_dispute_package(tenant_id: str, lease_id: str, dispute_summary: str
         )
         try:
             generate_with_handoff = _router()
-            raw_reply, model_used, handoff_note = asyncio.get_event_loop().run_until_complete(
-                generate_with_handoff(
-                    system_prompt=system_prompt,
-                    user_message=user_message,
-                    response_json=True,
-                )
+
+            raw_reply, model_used, handoff_note = _run_async(
+            generate_with_handoff(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            response_json=True,
             )
+)
             if raw_reply:
                 # Strip markdown code fences if present
                 cleaned = raw_reply.strip()
@@ -172,16 +208,20 @@ def generate_dispute_package(tenant_id: str, lease_id: str, dispute_summary: str
 
     if assessment is None:
         assessment = _fallback_assessment(audit, conflicts)
+        assessment = assessment.model_copy(
+            update={"lawful_refundable_amount_inr": float(ledger_refund)}
+        )
         generation_mode = "deterministic_fallback"
     else:
         # Money always sourced from SQL — override model value.
-        assessment = assessment.model_copy(update={"lawful_refundable_amount_inr": float(audit["lawful_refundable_balance_inr"])})
+        assessment = assessment.model_copy(update={"lawful_refundable_amount_inr": float(ledger_refund)})
         generation_mode = f"llm:{model_used}"
 
     notice = _draft_notice(tenant_id, lease_id, dispute_summary, audit, conflicts, assessment)
     return {
         "tenant_id": tenant_id,
         "lease_id": lease_id,
+        "dispute_summary": dispute_summary,
         "risk_assessment": assessment.model_dump(),
         "legal_notice": notice,
         "generation_mode": generation_mode,

@@ -53,11 +53,9 @@ from agent.llm_router import generate_with_handoff
 
 
 GEMINI_MODELS = [
-
     "gemini-3.5-flash-lite",
-
     "gemini-3.8-flash",
-
+    "gemini-2.5-flash",
 ]
 
 
@@ -661,27 +659,271 @@ async def run(
 
 
 
+        # -------------------------------------------------
+        # Initial RAG Retrieval
+        # -------------------------------------------------
+
         matched = tool_data(
-
             await rag.call_tool(
-
                 "compare_lease_against_statutes",
-
                 {
-
                     "tenant_id": tenant_id,
-
                     "lease_id": lease_id,
-
-                    "dispute_query": query,
-
+                    "dispute_query": search_query,
                 },
-
             )
-
         )
 
+        initial_lease_citations = matched.get(
+            "lease_citations",
+            [],
+        )
 
+        initial_statute_citations = matched.get(
+            "statute_citations",
+            [],
+        )
+
+        # -------------------------------------------------
+        # Adaptive Retrieval Retry
+        # -------------------------------------------------
+
+        initial_gap = evidence_gap_reason(
+            user_message,
+            search_query,
+            initial_lease_citations,
+        )
+
+        retry_needed = (
+            not initial_lease_citations
+            or initial_gap is not None
+        )
+
+        if retry_needed:
+
+            query_lower = search_query.lower()
+
+            retry_expansions = {
+                "notice": (
+                    "termination notice period advance notice "
+                    "vacating premises lease termination "
+                    "notice requirement"
+                ),
+
+                "deposit": (
+                    "security deposit refund deductions "
+                    "forfeiture refundable deposit damages "
+                    "move out charges"
+                ),
+
+                "lock": (
+                    "lock-in period early termination "
+                    "exit restriction minimum tenancy "
+                    "premature termination"
+                ),
+
+                "maintenance": (
+                    "maintenance repairs landlord tenant "
+                    "responsibility maintenance charges "
+                    "service charges"
+                ),
+
+                "paint": (
+                    "painting repainting restoration "
+                    "wear and tear cleaning deductions "
+                    "damage charges"
+                ),
+
+                "rent": (
+                    "rent increase rent escalation "
+                    "rent revision percentage increase "
+                    "monthly rent adjustment"
+                ),
+
+                "damage": (
+                    "property damage repairs replacement "
+                    "wear and tear deductions liability "
+                    "security deposit"
+                ),
+
+                "eviction": (
+                    "eviction termination possession "
+                    "vacating premises notice landlord "
+                    "tenant rights"
+                ),
+
+                "refund": (
+                    "refund security deposit deductions "
+                    "payment return refundable amount "
+                    "settlement"
+                ),
+
+                "repair": (
+                    "repairs maintenance responsibility "
+                    "property damage replacement "
+                    "landlord tenant obligations"
+                ),
+            }
+
+            expansion_terms = []
+
+            for keyword, terms in retry_expansions.items():
+
+                if keyword in query_lower:
+
+                    expansion_terms.append(
+                        terms
+                    )
+
+            if not expansion_terms:
+
+                expansion_terms.append(
+                    "lease agreement tenant landlord "
+                    "obligations rights conditions "
+                    "termination penalties charges"
+                )
+
+            retry_query = (
+                f"{search_query} "
+                + " ".join(expansion_terms)
+            ).strip()
+
+            # Avoid retrying with the exact same query.
+
+            if retry_query != search_query:
+
+                print(
+                    "RAG evidence insufficient. "
+                    "Performing one expanded retrieval."
+                )
+
+                retry_matched = tool_data(
+                    await rag.call_tool(
+                        "compare_lease_against_statutes",
+                        {
+                            "tenant_id": tenant_id,
+                            "lease_id": lease_id,
+                            "dispute_query": retry_query,
+                        },
+                    )
+                )
+
+                retry_lease_citations = (
+                    retry_matched.get(
+                        "lease_citations",
+                        [],
+                    )
+                )
+
+                retry_statute_citations = (
+                    retry_matched.get(
+                        "statute_citations",
+                        [],
+                    )
+                )
+
+                # -------------------------------------------------
+                # Merge and Deduplicate Evidence
+                # -------------------------------------------------
+
+                def merge_citations(
+                    primary,
+                    secondary,
+                ):
+
+                    merged = []
+                    seen = set()
+
+                    for item in (
+                        primary
+                        +
+                        secondary
+                    ):
+
+                        key = (
+                            str(
+                                item.get(
+                                    "citation",
+                                    "",
+                                )
+                            ).strip().lower(),
+
+                            str(
+                                item.get(
+                                    "content",
+                                    "",
+                                )
+                            ).strip().lower(),
+                        )
+
+                        if key in seen:
+                            continue
+
+                        seen.add(key)
+
+                        merged.append(
+                            item
+                        )
+
+                    return merged
+
+                merged_lease_citations = (
+                    merge_citations(
+                        initial_lease_citations,
+                        retry_lease_citations,
+                    )
+                )
+
+                merged_statute_citations = (
+                    merge_citations(
+                        initial_statute_citations,
+                        retry_statute_citations,
+                    )
+                )
+
+                matched = dict(
+                    matched
+                )
+
+                matched[
+                    "lease_citations"
+                ] = merged_lease_citations
+
+                matched[
+                    "statute_citations"
+                ] = merged_statute_citations
+
+                matched[
+                    "matches"
+                ] = (
+                    merged_lease_citations
+                    +
+                    merged_statute_citations
+                )
+
+                matched[
+                    "retrieval_retry"
+                ] = True
+
+                matched[
+                    "retry_query"
+                ] = retry_query
+
+            else:
+
+                matched[
+                    "retrieval_retry"
+                ] = False
+
+        else:
+
+            matched[
+                "retrieval_retry"
+            ] = False
+
+        # -------------------------------------------------
+        # Ledger Audit
+        # -------------------------------------------------
 
         audit = tool_data(
 
@@ -1190,33 +1432,39 @@ def deterministic_chat_reply(
 
 
 def evidence_gap_reason(
-
     user_message: str,
-
     search_query: str,
-
     lease_citations: list[dict],
-
 ) -> str | None:
 
+    asked = f"{user_message} {search_query}"
 
+    # -----------------------------------------------------
+    # General lease evidence sufficiency
+    # -----------------------------------------------------
 
-    asked = (
-
-        f"{user_message} {search_query}"
-
+    lease_specific_question = bool(
+        LEASE_DOMAIN_TERMS.search(asked)
     )
 
+    if lease_specific_question and not lease_citations:
+        return (
+            "No relevant lease clauses were retrieved "
+            "for this lease-specific question. The answer "
+            "cannot be verified against the agreement."
+        )
 
+    # -----------------------------------------------------
+    # Explicit clause reference validation
+    # -----------------------------------------------------
 
-    # Normalize citations such as "Clause 3, page 1", "3", or content
-    # containing a clause heading. The old exact-string comparison caused
-    # false evidence gaps when retrieved evidence already contained the clause.
     available = set()
+
     for item in lease_citations:
         citation_text = str(item.get("citation", "") or "")
         content_text = str(item.get("content", "") or "")
         combined_text = f"{citation_text} {content_text}"
+
         available.update(
             re.findall(
                 r"\bclause\s+(\d+(?:\.\d+)*)\b",
@@ -1224,273 +1472,191 @@ def evidence_gap_reason(
                 flags=re.IGNORECASE,
             )
         )
-        # Some retrieval records store a bare numeric clause citation.
-        bare = re.fullmatch(r"\s*(\d+(?:\.\d+)*)\s*", citation_text)
+
+        bare = re.fullmatch(
+            r"\s*(\d+(?:\.\d+)*)\s*",
+            citation_text,
+        )
+
         if bare:
             available.add(bare.group(1))
 
-
-
     requested_clauses = set(
-
         re.findall(
-
             r"\bclause\s+(\d+(?:\.\d+)*)\b",
-
             asked,
-
             flags=re.IGNORECASE,
-
         )
-
     )
 
-
-
-    missing = (
-
-        requested_clauses
-
-        - available
-
-    )
-
-
+    missing = requested_clauses - available
 
     if missing:
-
-
-
         refs = ", ".join(
-
             f"Clause {number}"
-
             for number in sorted(missing)
-
         )
-
-
 
         return (
-
             f"The explicitly requested {refs} "
-
             "was not found in the indexed lease evidence."
-
         )
 
-
+    # -----------------------------------------------------
+    # Lock-in evidence validation
+    # -----------------------------------------------------
 
     requested_lock_in = re.search(
-
         r"lock[ -]?in",
-
         user_message,
-
         flags=re.IGNORECASE,
-
     )
-
-
 
     lease_text = " ".join(
-
-        str(
-
-            item.get(
-
-                "content",
-
-                "",
-
-            )
-
-        )
-
-
-
+        str(item.get("content", ""))
         for item in lease_citations
-
     )
 
-
-
     if (
-
         requested_lock_in
-
         and not re.search(
-
             r"lock[ -]?in",
-
             lease_text,
-
             flags=re.IGNORECASE,
-
         )
-
     ):
-
-
-
         return (
-
             "The retrieved lease excerpts do not "
-
             "mention a lock-in period."
-
         )
-
-
 
     return None
 
+def validate_json_response(reply: str) -> tuple[bool, Any]:
+    """
+    Validate whether an assistant response is valid JSON.
 
+    Returns:
+        (True, parsed_json) if valid
+        (False, None) if invalid
+    """
+    if not reply:
+        return False, None
 
+    try:
+        parsed = json.loads(reply.strip())
+        return True, parsed
+    except json.JSONDecodeError:
+        pass
 
+    # Handle accidental Markdown code fences.
+    cleaned = re.sub(
+        r"^```(?:json)?\s*|\s*```$",
+        "",
+        reply.strip(),
+        flags=re.IGNORECASE,
+    )
 
-# =========================================================
-
-# CITATION VALIDATION
-
-# =========================================================
-
-
+    try:
+        parsed = json.loads(cleaned)
+        return True, parsed
+    except json.JSONDecodeError:
+        return False, None
 
 def unsupported_citations(
-
     reply: str,
-
     lease_citations: list[dict],
-
     statute_citations: list[dict],
-
 ) -> list[str]:
-
-
+    """Validate clause and statutory references in an LLM response."""
 
     unsupported = []
 
+    def normalize_clause_refs(value: str) -> set[str]:
+        value = str(value or "")
 
-
-    allowed_clauses = {
-
-        str(
-
-            item.get(
-
-                "citation",
-
-                "",
-
+        refs = set(
+            re.findall(
+                r"\bclause\s+(\d+(?:\.\d+)*)\b",
+                value,
+                flags=re.IGNORECASE,
             )
-
-        ).strip()
-
-
-
-        for item in lease_citations
-
-    }
-
-
-
-    allowed_sections = {
-
-
-
-        section
-
-
-
-        for item in statute_citations
-
-
-
-        for section in re.findall(
-
-            r"\bsection\s+(\d+(?:\.\d+)*)\b",
-
-            str(
-
-                item.get(
-
-                    "citation",
-
-                    "",
-
-                )
-
-            ),
-
-            flags=re.IGNORECASE,
-
         )
 
-    }
+        bare = re.fullmatch(
+            r"\s*(\d+(?:\.\d+)*)\s*",
+            value,
+        )
 
+        if bare:
+            refs.add(bare.group(1))
 
+        return refs
 
-    for clause in re.findall(
+    def normalize_section_refs(value: str) -> set[str]:
+        value = str(value or "")
 
-        r"\bclause\s+(\d+(?:\.\d+)*)\b",
+        return set(
+            re.findall(
+                r"\bsection\s+(\d+(?:\.\d+)*)\b",
+                value,
+                flags=re.IGNORECASE,
+            )
+        )
 
-        reply,
+    allowed_clauses = set()
 
-        flags=re.IGNORECASE,
+    for item in lease_citations:
+        citation = str(item.get("citation", "") or "")
+        content = str(item.get("content", "") or "")
 
-    ):
+        allowed_clauses.update(
+            normalize_clause_refs(citation)
+        )
 
+        allowed_clauses.update(
+            normalize_clause_refs(content)
+        )
 
+    allowed_sections = set()
 
+    for item in statute_citations:
+        citation = str(item.get("citation", "") or "")
+        content = str(item.get("content", "") or "")
+
+        allowed_sections.update(
+            normalize_section_refs(citation)
+        )
+
+        allowed_sections.update(
+            normalize_section_refs(content)
+        )
+
+    mentioned_clauses = set(
+        re.findall(
+            r"\bclause\s+(\d+(?:\.\d+)*)\b",
+            reply,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    mentioned_sections = set(
+        re.findall(
+            r"\bsection\s+(\d+(?:\.\d+)*)\b",
+            reply,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    for clause in sorted(mentioned_clauses):
         if clause not in allowed_clauses:
+            unsupported.append(f"Clause {clause}")
 
-
-
-            unsupported.append(
-
-                f"Clause {clause}"
-
-            )
-
-
-
-    for section in re.findall(
-
-        r"\bsection\s+(\d+(?:\.\d+)*)\b",
-
-        reply,
-
-        flags=re.IGNORECASE,
-
-    ):
-
-
-
+    for section in sorted(mentioned_sections):
         if section not in allowed_sections:
-
-
-
-            unsupported.append(
-
-                f"Section {section}"
-
-            )
-
-
+            unsupported.append(f"Section {section}")
 
     return unsupported
-
-
-
-
-
-# =========================================================
-
-# DETERMINISTIC EVIDENCE-GAP RESPONSE
-
-# =========================================================
-
 
 
 def deterministic_evidence_gap_reply(
@@ -2224,7 +2390,18 @@ async def chat_with_lease(
         ) <= 10 * 1024 * 1024
 
     ]
+        # -----------------------------------------------------
+    # Structured output intent detection
+    # -----------------------------------------------------
 
+    structured_json_requested = bool(
+        re.search(
+            r"\b(json|json format|structured json|json object|"
+            r"machine readable|structured output)\b",
+            user_message,
+            flags=re.IGNORECASE,
+        )
+    )
 
 
     gap_reason = evidence_gap_reason(
@@ -2275,6 +2452,36 @@ SOURCE PRIORITY
 
 Never treat a prior AI response as verified evidence.
 
+
+LEGAL AUTHORITY AND JURISDICTION SAFEGUARDS
+For questions involving Indian law:
+- Identify the relevant state/jurisdiction when it materially affects the answer.
+  If the jurisdiction is unknown, explicitly state that jurisdiction may affect the result.
+- The Model Tenancy Act, 2021 is model legislation. Do not assume it is automatically
+  binding or enacted in the user's state.
+- Cite a statutory section only when the retrieved source explicitly identifies that
+  section and supports the legal proposition being stated.
+- Never invent section numbers, case names, court decisions, legal quotations,
+  statutory wording, or legal authorities.
+- Do not rely on a retrieved snippet alone when it does not clearly establish the
+  relevant section and proposition.
+- If a retrieved source contains a section number but its text does not support the
+  proposition, do not cite it.
+- Distinguish the following clearly:
+  1. What the lease expressly says.
+  2. What retrieved legal material says.
+  3. Your general explanation or inference.
+  4. What requires verification under applicable state law.
+- Do not definitively label a lease clause illegal, void, unenforceable, or invalid
+  unless reliable retrieved legal authority directly supports that conclusion and the
+  relevant jurisdiction is established.
+- When legal sources are unavailable or retrieval is incomplete, say:
+  "I could not verify the applicable legal provision from the retrieved sources."
+  Then provide a cautious explanation without inventing citations.
+- When lease terms and legal sources appear to conflict, show the relevant lease
+  wording and retrieved legal authority separately. Do not automatically conclude
+  that either one overrides the other.
+
 STRICT DOCUMENT-ONLY MODE
 If the user asks "based only on my lease", "from the document only", "lease only",
 "document-only", "without external law", or equivalent:
@@ -2289,6 +2496,54 @@ EVIDENCE AND FACTUAL ACCURACY
 Never invent clauses, clause numbers, dates, names, amounts, penalties, receipts,
 property details, statutory provisions, legal authorities, or facts.
 Do not convert an inference into a contractual fact.
+
+CONTRACTUAL FACT VS. INFERENCE — STRICT GUARDRAIL
+
+For every contractual interpretation, distinguish these four levels:
+
+1. EXPLICITLY STATED:
+   The lease directly states the fact, right, obligation, permission, or condition.
+
+2. CALCULATED:
+   A numerical result derived from explicitly supported inputs.
+   Show the formula and identify assumptions.
+
+3. INFERRED:
+   A reasonable interpretation of the clause, but not expressly stated.
+   Introduce it with language such as "This may suggest..." or
+   "A possible interpretation is...".
+
+4. NOT ESTABLISHED:
+   The lease does not explicitly establish the conclusion being asked about.
+
+Never upgrade an inference into an explicit contractual right.
+
+IMPORTANT EXAMPLE:
+If a lease states that rent for an unserved notice period "may be deducted
+from the security deposit", do NOT conclude that the tenant has an
+unconditional right to leave immediately by paying that amount.
+
+Instead explain:
+- The lease requires the stated notice period.
+- The lease allows a deduction for the unserved notice period, if applicable.
+- The lease does not necessarily establish that immediate termination by
+  payment is an unconditional right.
+- Whether the landlord must accept early departure or payment in lieu of
+  notice is not established unless the contract expressly says so.
+
+Similarly:
+- "May deduct" does not mean a deduction is automatically owed.
+- "Can issue a reminder" does not mean a monetary penalty exists.
+- "Subject to documented deductions" does not mean any requested deduction
+  is automatically valid.
+- A permitted deduction does not automatically establish the landlord's
+  right to terminate.
+- A clause describing consequences does not necessarily establish permission
+  to perform the underlying action.
+
+When a question asks whether the user CAN do something, verify that the
+document explicitly grants that right. Do not infer permission merely from
+a clause describing consequences, costs, or deductions.
 For each important lease claim, cite the clause/source when available, e.g. (Clause 4.2).
 If evidence is missing, incomplete, or retrieval is weak, state that limitation clearly.
 Use these distinctions:
@@ -2304,6 +2559,41 @@ Adapt the response to the request:
 - Summary: give key terms only (rent, deposit, dates, lock-in, notice, responsibilities).
 - Specific clause question: direct answer, clause, practical meaning, consequence.
 - Risk review: rank only material risks; explain why, impact, and practical action.
+
+- Comprehensive risk analysis:
+  When the user asks to identify risks, disadvantages, financial exposure,
+  loopholes, or problematic clauses, perform a systematic review of all
+  relevant retrieved evidence rather than focusing only on the first matching
+  clauses.
+
+  Check relevant categories when evidence is available:
+  - Rent, escalation, renewal, and payment deadlines.
+  - Security deposit, refund timeline, and deduction conditions.
+  - Lock-in, termination, notice, and early-exit consequences.
+  - Maintenance, repair, damage, and cleaning responsibilities.
+  - Utilities and additional charges.
+  - Late-payment consequences.
+  - Landlord access and tenant privacy.
+  - Renewal, amendments, and missing protections.
+  - Ambiguous, conditional, unusually broad, or one-sided wording.
+
+  Do not invent a risk merely because a clause is absent.
+  Distinguish:
+  1. Explicit contractual risk.
+  2. Ambiguity or uncertainty.
+  3. Missing contractual protection.
+  4. Potential legal risk requiring jurisdiction-specific verification.
+
+  For each material finding, provide:
+  - Risk.
+  - Supporting clause/evidence.
+  - Practical financial or operational impact.
+  - What is explicitly stated versus inferred.
+  - Recommended action, where useful.
+
+  If retrieval only covers part of the lease, disclose that the review
+  is limited to the retrieved evidence and do not imply that the entire
+  agreement was exhaustively reviewed.
 - Contradiction scan: compare actual passages. Show both sides, source references,
   and why they conflict. If no conflict is found in retrieved evidence, say so and
   qualify the search scope. Do not label missing information as a contradiction.
@@ -2388,6 +2678,65 @@ Never use "maximum liability", "guaranteed", "exact", "automatically owed", or
 "definitely refundable" unless the evidence and calculation support that wording.
 When a clause is conditional or mitigation-dependent, explain that condition in the
 main answer, not only in a footnote.
+
+CHAT RESPONSE QUALITY AND ADAPTIVE STRUCTURE
+
+Apply the same evidence-grounding, citation-validation, and uncertainty rules
+to every conversational response, not only formal lease reviews.
+
+ADAPTIVE RESPONSE FORMAT:
+- Casual or unrelated question: respond naturally and conversationally.
+  Do not force headings, citations, legal disclaimers, or lease analysis.
+- Simple lease question: answer directly in 1-3 sentences and cite the
+  supporting clause inline when available.
+- Follow-up question: use the conversation history to understand references
+  such as "that clause", "this amount", "what about termination", or "it".
+  Reuse prior context, but never treat a prior AI answer as verified evidence.
+- Complex lease question: organize the answer using only relevant sections:
+  Short Answer, What Your Lease Says, Evidence, Limitations, and Next Step.
+  Do not print empty sections.
+- Financial question: use verified ledger/document values, show the formula
+  and result, and clearly distinguish confirmed amounts from estimates,
+  disputed amounts, and conditional liabilities.
+- Legal question: separate contractual wording, retrieved legal authority,
+  and general explanation. Do not make definitive legal conclusions without
+  verified authority and jurisdiction.
+- Risk question: identify the material risk, supporting clause, practical
+  impact, and recommended action.
+- Comprehensive review: prioritize the highest-impact findings rather than
+  listing every clause.
+
+CHAT EVIDENCE GATE:
+Before answering a lease-specific or legal question, determine whether the
+retrieved evidence directly supports the answer.
+
+Evidence is insufficient when:
+- No relevant lease evidence was retrieved.
+- The retrieved text does not directly support the requested conclusion.
+- A necessary clause, amount, date, condition, or jurisdiction is missing.
+- Relevant retrieved sources conflict and the conflict is unresolved.
+- The answer requires legal authority that was not verified.
+- The retrieved evidence is only a partial snippet and the conclusion depends
+  on missing surrounding wording.
+
+When evidence is insufficient:
+- Do not guess or fill gaps using general assumptions.
+- Clearly state what could and could not be verified.
+- Provide the closest relevant retrieved evidence, if useful.
+- Identify the single most important missing fact or source.
+- If another retrieval attempt is possible, search for the missing evidence
+  before giving the final limited answer.
+- If retrieval remains insufficient, give a cautious answer and explain
+  the limitation in plain English.
+
+CONVERSATIONAL QUALITY:
+- Do not sound robotic or repeatedly use the same headings.
+- Do not repeat information already explained unless needed for clarity.
+- Keep simple answers short and complex answers well organized.
+- Answer the user's actual question before adding background.
+- Provide practical next steps only when genuinely useful.
+- Never sacrifice accuracy to make an answer sound complete.
+
 
 USER-FRIENDLY RESPONSE STYLE
 - Use plain English and answer in the first sentence. Avoid legal jargon unless needed;
@@ -2656,7 +3005,53 @@ was incorrect or unsupported, correct it clearly rather than preserving it.
 
             )
 
+    # -----------------------------------------------------
+    # Structured output validation
+    # -----------------------------------------------------
 
+    if structured_json_requested:
+        is_valid_json, parsed_json = validate_json_response(reply)
+
+        if is_valid_json:
+            # Normalize valid JSON to ensure consistent formatting.
+            reply = json.dumps(
+                parsed_json,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        else:
+            logger.warning(
+                "Model returned invalid JSON for structured-output request"
+            )
+
+            reply = json.dumps(
+                {
+                    "error": "Structured response generation failed",
+                    "message": (
+                        "LeaseLens could not generate valid JSON "
+                        "for this request."
+                    ),
+                    "available_evidence": {
+                        "lease_clauses": [
+                            item.get("citation")
+                            for item in lease_citations
+                            if item.get("citation")
+                        ],
+                        "statutory_sources": [
+                            item.get("citation")
+                            for item in statute_citations
+                            if item.get("citation")
+                        ],
+                    },
+                    "limitations": (
+                        "The response could not be validated as JSON. "
+                        "No unsupported information was added."
+                    ),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
 
     # -----------------------------------------------------
 

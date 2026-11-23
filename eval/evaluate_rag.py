@@ -5,7 +5,7 @@ import psycopg
 from dotenv import load_dotenv
 from flashrank import Ranker, RerankRequest
 from pgvector.psycopg import register_vector
-from sentence_transformers import SentenceTransformer
+from embeddings import generate_embedding as gemini_generate_embedding
 
 load_dotenv()
 DB = os.getenv("DATABASE_URL", "postgresql://leaselens:leaselens@localhost:5432/leaselens")
